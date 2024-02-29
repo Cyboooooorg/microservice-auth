@@ -41,10 +41,27 @@ jobs:
           check-latest-tag-only: true
           release: true
 
+      - name: Bump Check
+        id: bump-check
+        shell: bash
+        run: |
+          echo "Bump Check"
+          if [ ${{ steps.bump-version.outputs.version }} != '' ]; then
+            echo "Bump Version: ${{ steps.bump-version.outputs.version }}"
+            echo "Previous Tag: ${{ steps.get-previous-tag.outputs.tag }}"
+            echo "Bump Version != Previous Tag: ${{ steps.bump-version.outputs.version != steps.get-previous-tag.outputs.tag }}"
+            echo "Bump Version != '': ${{ steps.bump-version.outputs.version != '' }}"
+            echo "Bump Version != Previous Tag && Bump Version != '': ${{ steps.bump-version.outputs.version != steps.get-previous-tag.outputs.tag && steps.bump-version.outputs.version != '' }}"
+            echo "bumped=true" >> $GITHUB_OUTPUT
+          else
+            echo "No Bump"
+            echo "bumped=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Generate Changelog
         if: |
-          ${{ steps.bump-version.outputs.version}} != ${{steps.get-previous-tag.outputs.tag }}
-          && ${{ steps.bump-version.outputs.version}} != ''
+          ${{ steps.bump-check.outputs.bumped == 'true'}}
+          && ${{ steps.bump-version.outputs.version}} != ${{steps.get-previous-tag.outputs.tag }}
         id: generate-changelog
         run: |
           echo 'changelog<<EOF' >> $GITHUB_OUTPUT
@@ -53,8 +70,8 @@ jobs:
 
       - name: Create Pull Request
         if: |
-          ${{ steps.bump-version.outputs.version}} != ${{steps.get-previous-tag.outputs.tag }}
-          && ${{ steps.bump-version.outputs.version}} != ''
+          ${{ steps.bump-check.outputs.bumped == 'true'}}
+          && ${{ steps.bump-version.outputs.version}} != ${{steps.get-previous-tag.outputs.tag }}
         id: create-pull-request
         uses: peter-evans/create-pull-request@v5
         with:
@@ -76,8 +93,8 @@ jobs:
 
       - name: Generate Release From Latest Tag
         if: |
-          ${{ steps.bump-version.outputs.version}} != ${{steps.get-previous-tag.outputs.tag }}
-          && ${{ steps.bump-version.outputs.version}} != ''
+          ${{ steps.bump-check.outputs.bumped == 'true'}}
+          && ${{ steps.bump-version.outputs.version}} != ${{steps.get-previous-tag.outputs.tag }}
         uses: softprops/action-gh-release@v1
         with:
           body: ${{ steps.generate-changelog.outputs.changelog }}
@@ -86,8 +103,8 @@ jobs:
 
       - name: Enable Pull Request Automerge
         if: |
-          ${{ steps.bump-version.outputs.version}} != ${{steps.get-previous-tag.outputs.tag }}
-          && ${{ steps.bump-version.outputs.version}} != ''
+          ${{ steps.bump-check.outputs.bumped == 'true'}}
+          && ${{ steps.bump-version.outputs.version}} != ${{steps.get-previous-tag.outputs.tag }}
         run: gh pr merge --merge --auto -d "${{ steps.create-pull-request.outputs.pull-request-number }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
