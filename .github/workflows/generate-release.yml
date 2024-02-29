@@ -41,27 +41,19 @@ jobs:
           check-latest-tag-only: true
           release: true
 
-      - name: Bump Check
-        id: bump-check
-        shell: bash
+      - name: Get Bumped Tag
+        id: get-bumped-tag
+        uses: WyriHaximus/github-action-get-previous-tag@v1.4
+        with:
+          fallback: 0.0.0
+
+      - name: Check Bumped Tag
+        id: check-bumped-tag
         run: |
-          echo "Bump Check"
-          if [ ${{ steps.bump-version.outputs.version }} != '' ]; then
-            echo "Bump Version: ${{ steps.bump-version.outputs.version }}"
-            echo "Previous Tag: ${{ steps.get-previous-tag.outputs.tag }}"
-            echo "Bump Version != Previous Tag: ${{ steps.bump-version.outputs.version != steps.get-previous-tag.outputs.tag }}"
-            echo "Bump Version != '': ${{ steps.bump-version.outputs.version != '' }}"
-            echo "Bump Version != Previous Tag && Bump Version != '': ${{ steps.bump-version.outputs.version != steps.get-previous-tag.outputs.tag && steps.bump-version.outputs.version != '' }}"
-            echo "bumped=true" >> $GITHUB_OUTPUT
-          else
-            echo "No Bump"
-            echo "bumped=false" >> $GITHUB_OUTPUT
-          fi
+          echo "bumped=${{ steps.get-bumped-tag.outputs.tag != steps.get-previous-tag.outputs.tag }}" >> $GITHUB_OUTPUT
 
       - name: Generate Changelog
-        if: |
-          ${{ steps.bump-check.outputs.bumped == 'true'}}
-          && ${{ steps.bump-version.outputs.version}} != ${{steps.get-previous-tag.outputs.tag }}
+        if: ${{ steps.check-bumped-tag.outputs.bumped }}
         id: generate-changelog
         run: |
           echo 'changelog<<EOF' >> $GITHUB_OUTPUT
@@ -69,9 +61,7 @@ jobs:
           echo 'EOF' >> $GITHUB_OUTPUT
 
       - name: Create Pull Request
-        if: |
-          ${{ steps.bump-check.outputs.bumped == 'true'}}
-          && ${{ steps.bump-version.outputs.version}} != ${{steps.get-previous-tag.outputs.tag }}
+        if: ${{ steps.check-bumped-tag.outputs.bumped }}
         id: create-pull-request
         uses: peter-evans/create-pull-request@v5
         with:
@@ -92,9 +82,7 @@ jobs:
           draft: false
 
       - name: Generate Release From Latest Tag
-        if: |
-          ${{ steps.bump-check.outputs.bumped == 'true'}}
-          && ${{ steps.bump-version.outputs.version}} != ${{steps.get-previous-tag.outputs.tag }}
+        if: ${{ steps.check-bumped-tag.outputs.bumped }}
         uses: softprops/action-gh-release@v1
         with:
           body: ${{ steps.generate-changelog.outputs.changelog }}
@@ -102,9 +90,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Enable Pull Request Automerge
-        if: |
-          ${{ steps.bump-check.outputs.bumped == 'true'}}
-          && ${{ steps.bump-version.outputs.version}} != ${{steps.get-previous-tag.outputs.tag }}
+        if: ${{ steps.check-bumped-tag.outputs.bumped }}
         run: gh pr merge --merge --auto -d "${{ steps.create-pull-request.outputs.pull-request-number }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
