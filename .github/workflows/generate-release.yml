@@ -53,7 +53,7 @@ jobs:
           echo "bumped=${{ steps.get-bumped-tag.outputs.tag != steps.get-previous-tag.outputs.tag }}" >> $GITHUB_OUTPUT
 
       - name: Generate Changelog
-        if: ${{ steps.check-bumped-tag.outputs.bumped == 'true' }}
+        if: steps.check-bumped-tag.outputs.bumped == 'true'
         id: generate-changelog
         run: |
           echo 'changelog<<EOF' >> $GITHUB_OUTPUT
@@ -61,7 +61,7 @@ jobs:
           echo 'EOF' >> $GITHUB_OUTPUT
 
       - name: Create Pull Request
-        if: ${{ steps.check-bumped-tag.outputs.bumped == 'true' }}
+        if: steps.check-bumped-tag.outputs.bumped == 'true'
         id: create-pull-request
         uses: peter-evans/create-pull-request@v5
         with:
@@ -82,7 +82,7 @@ jobs:
           draft: false
 
       - name: Generate Release From Latest Tag
-        if: ${{ steps.check-bumped-tag.outputs.bumped == 'true' }}
+        if: steps.check-bumped-tag.outputs.bumped == 'true'
         uses: softprops/action-gh-release@v1
         with:
           body: ${{ steps.generate-changelog.outputs.changelog }}
@@ -90,7 +90,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Enable Pull Request Automerge
-        if: ${{ steps.check-bumped-tag.outputs.bumped == 'true' }}
+        if: steps.check-bumped-tag.outputs.bumped == 'true'
         run: gh pr merge --merge --auto -d "${{ steps.create-pull-request.outputs.pull-request-number }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
