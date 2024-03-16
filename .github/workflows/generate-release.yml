@@ -19,6 +19,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Set Up Committer as GitHub Actions Bot
         run: |
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
